@@ -82,10 +82,16 @@ const StopEtaRow: React.FC<{ route: string; stop: RouteStopConfig; lastRefresh: 
   return (
     <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
       <div className="flex justify-between items-center mb-2 pb-2 border-b border-slate-200">
-        <div className="font-medium text-slate-700 text-sm flex items-center gap-2">
+        <a 
+          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.stop_name + ' 巴士站')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-slate-700 text-sm flex items-center gap-2 hover:text-red-600 transition-colors"
+          title="在 Google Maps 中開啟"
+        >
           <div className="w-2 h-2 rounded-full bg-red-500"></div>
           {stop.stop_name}
-        </div>
+        </a>
         <div className="flex items-center gap-2">
           {loading && <RefreshCw size={14} className="animate-spin text-slate-400" />}
           <button onClick={onDelete} className="text-slate-300 hover:text-red-500 transition-colors" title="刪除此車站">
