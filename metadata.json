@@ -1,0 +1,5 @@
+{
+  "name": "KMB ETA Tracker",
+  "description": "A mobile-first web app to track Hong Kong KMB bus ETAs.",
+  "requestFramePermissions": []
+}
