@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Bus, RefreshCw, AlertCircle, Clock, MapPin, Plus, Trash2, X, Search, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
@@ -20,6 +20,104 @@ type RouteGroup = {
 // 預先定義的路線 (清空，讓使用者自行新增)
 const PREDEFINED_ROUTES: RouteGroup[] = [];
 
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 8000) => {
+  const controller = new AbortController();
+  let isTimeout = false;
+  
+  const abortHandler = () => {
+    controller.abort();
+  };
+
+  if (options.signal) {
+    if (options.signal.aborted) {
+      throw new DOMException('Aborted', 'AbortError');
+    }
+    options.signal.addEventListener('abort', abortHandler);
+  }
+
+  const timeoutId = setTimeout(() => {
+    isTimeout = true;
+    controller.abort();
+  }, timeout);
+
+  const cleanup = () => {
+    clearTimeout(timeoutId);
+    if (options.signal) {
+      options.signal.removeEventListener('abort', abortHandler);
+    }
+  };
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    
+    const originalJson = response.json.bind(response);
+    response.json = async () => {
+      try {
+        return await originalJson();
+      } catch (err: any) {
+        if (isTimeout) throw new Error('Timeout');
+        throw err;
+      } finally {
+        cleanup();
+      }
+    };
+    
+    const originalText = response.text.bind(response);
+    response.text = async () => {
+      try {
+        return await originalText();
+      } catch (err: any) {
+        if (isTimeout) throw new Error('Timeout');
+        throw err;
+      } finally {
+        cleanup();
+      }
+    };
+
+    return response;
+  } catch (err: any) {
+    cleanup();
+    if (isTimeout) {
+      throw new Error('Timeout');
+    }
+    throw err;
+  }
+};
+
+let cachedStopsMap: Record<string, string> | null = null;
+let fetchStopsPromise: Promise<Record<string, string>> | null = null;
+
+const getGlobalStopsMap = async (): Promise<Record<string, string>> => {
+  if (cachedStopsMap) return cachedStopsMap;
+  if (fetchStopsPromise) return fetchStopsPromise;
+
+  fetchStopsPromise = fetchWithTimeout('https://data.etabus.gov.hk/v1/transport/kmb/stop', {}, 15000)
+    .then(res => {
+      if (!res.ok) throw new Error('Network response was not ok');
+      return res.json();
+    })
+    .then(json => {
+      const map: Record<string, string> = {};
+      if (json && json.data) {
+        json.data.forEach((s: any) => {
+          map[s.stop] = s.name_tc;
+        });
+      }
+      cachedStopsMap = map;
+      return map;
+    })
+    .catch(err => {
+      fetchStopsPromise = null;
+      console.error('Failed to load stops map', err);
+      throw err;
+    });
+
+  return fetchStopsPromise;
+};
+
 type EtaData = {
   eta: string | null;
   rmk_tc: string;
@@ -30,38 +128,64 @@ const StopEtaRow: React.FC<{ route: string; stop: RouteStopConfig; lastRefresh: 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchEta = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/eta/${stop.stop_id}/${route}/${stop.service_type}`);
-      if (!res.ok) throw new Error('Network response was not ok');
-      const json = await res.json();
-      
-      if (json && json.data) {
-        const validEtas = json.data
-          .filter((item: any) => item.eta !== null)
-          .sort((a: any, b: any) => new Date(a.eta).getTime() - new Date(b.eta).getTime())
-          .slice(0, 3)
-          .map((item: any) => ({
-            eta: item.eta,
-            rmk_tc: item.rmk_tc || ''
-          }));
-        setEtas(validEtas);
-      } else {
-        setEtas([]);
-      }
-    } catch (err) {
-      setError('無法載入');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [route, stop]);
-
   useEffect(() => {
+    let isActive = true;
+    const controller = new AbortController();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        controller.abort();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const fetchEta = async () => {
+      if (document.visibilityState === 'hidden') return;
+      
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetchWithTimeout(`https://data.etabus.gov.hk/v1/transport/kmb/eta/${stop.stop_id}/${route}/${stop.service_type}`, {
+          signal: controller.signal
+        });
+        if (!res.ok) throw new Error('Network response was not ok');
+        const json = await res.json();
+        
+        if (!isActive) return;
+
+        if (json && json.data) {
+          const validEtas = json.data
+            .filter((item: any) => item.eta !== null)
+            .sort((a: any, b: any) => new Date(a.eta).getTime() - new Date(b.eta).getTime())
+            .slice(0, 3)
+            .map((item: any) => ({
+              eta: item.eta,
+              rmk_tc: item.rmk_tc || ''
+            }));
+          setEtas(validEtas);
+        } else {
+          setEtas([]);
+        }
+      } catch (err: any) {
+        if (!isActive) return;
+        if (err.name === 'AbortError' || err.message === 'Timeout') return;
+        setError('無法載入');
+        console.error(err);
+      } finally {
+        if (isActive) {
+          setLoading(false);
+        }
+      }
+    };
+
     fetchEta();
-  }, [fetchEta, lastRefresh]);
+
+    return () => {
+      isActive = false;
+      controller.abort();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [route, stop, lastRefresh]);
 
   const getMinutesLeft = (eta: string | null) => {
     if (!eta) return '-';
@@ -224,14 +348,19 @@ const AddStopToGroupModal = ({ group, onAdd, onCancel }: { group: RouteGroup, on
   const [serviceType, setServiceType] = useState<string>('1');
 
   useEffect(() => {
+    let isActive = true;
+    const controller = new AbortController();
+
     const fetchData = async () => {
       setLoading(true);
       try {
         const normalize = (s: string) => s.replace(/[（）()]/g, '').trim();
         const destTc = normalize(group.direction.replace('往 ', ''));
-        const routeRes = await fetch('https://data.etabus.gov.hk/v1/transport/kmb/route/');
+        const routeRes = await fetchWithTimeout('https://data.etabus.gov.hk/v1/transport/kmb/route/', { signal: controller.signal });
         const routeJson = await routeRes.json();
         
+        if (!isActive) return;
+
         if (!routeJson || !routeJson.data) throw new Error('找不到路線資料');
         
         const boundInfo = routeJson.data.find((r: any) => r.route === group.route && normalize(r.dest_tc) === destTc);
@@ -241,19 +370,17 @@ const AddStopToGroupModal = ({ group, onAdd, onCancel }: { group: RouteGroup, on
         setServiceType(boundInfo.service_type);
 
         const direction = boundInfo.bound === 'I' ? 'inbound' : 'outbound';
-        const stopsRes = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${group.route}/${direction}/${boundInfo.service_type}`);
+        const stopsRes = await fetchWithTimeout(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${group.route}/${direction}/${boundInfo.service_type}`, { signal: controller.signal });
         const stopsJson = await stopsRes.json();
         
-        const allStopsRes = await fetch('https://data.etabus.gov.hk/v1/transport/kmb/stop');
-        const allStopsJson = await allStopsRes.json();
-        const stopMap: Record<string, string> = {};
-        if (allStopsJson && allStopsJson.data) {
-          allStopsJson.data.forEach((s: any) => {
-            stopMap[s.stop] = s.name_tc;
-          });
+        if (!isActive) return;
+
+        try {
+          const stopMap = await getGlobalStopsMap();
+          if (isActive) setAllStopsMap(stopMap);
+        } catch (e) {
+          console.error('Failed to get global stops map', e);
         }
-        
-        setAllStopsMap(stopMap);
         
         if (stopsJson && stopsJson.data) {
           const sortedStops = stopsJson.data.sort((a: any, b: any) => a.seq - b.seq);
@@ -262,13 +389,22 @@ const AddStopToGroupModal = ({ group, onAdd, onCancel }: { group: RouteGroup, on
           setStops([]);
           throw new Error('找不到車站資料');
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (!isActive) return;
+        if (err.name === 'AbortError') return;
         setError('載入車站失敗');
       } finally {
-        setLoading(false);
+        if (isActive) {
+          setLoading(false);
+        }
       }
     };
     fetchData();
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
   }, [group]);
 
   return (
@@ -356,19 +492,18 @@ const AddRouteForm = ({ onAdd, onCancel }: { onAdd: (route: { route: string, sto
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
-    fetch('https://data.etabus.gov.hk/v1/transport/kmb/stop')
-      .then(res => res.json())
-      .then(json => {
-        if (json && json.data) {
-          const map: Record<string, string> = {};
-          json.data.forEach((s: any) => {
-            map[s.stop] = s.name_tc;
-          });
-          setAllStopsMap(map);
-        }
-      })
+    getGlobalStopsMap()
+      .then(map => setAllStopsMap(map))
       .catch(err => console.error('Failed to load stops map', err));
+      
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, []);
 
   const handleSearchRoute = async (e: React.FormEvent) => {
@@ -376,10 +511,16 @@ const AddRouteForm = ({ onAdd, onCancel }: { onAdd: (route: { route: string, sto
     const searchRoute = routeInput.trim().toUpperCase();
     if (!searchRoute) return;
     
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route/`);
+      const res = await fetchWithTimeout(`https://data.etabus.gov.hk/v1/transport/kmb/route/`, { signal: controller.signal });
       const json = await res.json();
       
       if (json && json.data) {
@@ -388,25 +529,38 @@ const AddRouteForm = ({ onAdd, onCancel }: { onAdd: (route: { route: string, sto
           setBounds(matchedRoutes);
           setStep(2);
           setSelectedBoundIdx(0);
-          await fetchStops(matchedRoutes[0]);
+          await fetchStops(matchedRoutes[0], controller);
         } else {
           setError('找不到此路線');
         }
       } else {
         setError('找不到此路線');
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
       setError('搜尋失敗，請稍後再試');
     } finally {
-      setLoading(false);
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+      }
     }
   };
 
-  const fetchStops = async (boundInfo: any) => {
+  const fetchStops = async (boundInfo: any, existingController?: AbortController) => {
     setLoading(true);
+    
+    let controller = existingController;
+    if (!controller) {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      controller = new AbortController();
+      abortControllerRef.current = controller;
+    }
+
     try {
       const direction = boundInfo.bound === 'I' ? 'inbound' : 'outbound';
-      const res = await fetch(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${boundInfo.route}/${direction}/${boundInfo.service_type}`);
+      const res = await fetchWithTimeout(`https://data.etabus.gov.hk/v1/transport/kmb/route-stop/${boundInfo.route}/${direction}/${boundInfo.service_type}`, { signal: controller.signal });
       const json = await res.json();
       
       if (json && json.data) {
@@ -416,10 +570,13 @@ const AddRouteForm = ({ onAdd, onCancel }: { onAdd: (route: { route: string, sto
           setSelectedStop(sortedStops[0].stop);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
       setError('載入車站失敗');
     } finally {
-      setLoading(false);
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+      }
     }
   };
 
@@ -634,7 +791,19 @@ export default function App() {
       });
     }, 1000);
 
-    return () => clearInterval(timer);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        setLastRefresh(Date.now());
+        setCountdown(60);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const handleManualRefresh = () => {
