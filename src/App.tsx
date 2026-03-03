@@ -924,7 +924,7 @@ export default function App() {
             <Bus size={24} />
             <h1 className="font-bold text-lg tracking-wide flex items-center gap-2">
               KMB ETA Tracker
-              <span className="text-[10px] bg-red-700 px-1.5 py-0.5 rounded-md font-mono opacity-80">v1.0.1</span>
+              <span className="text-[10px] bg-red-700 px-1.5 py-0.5 rounded-md font-mono opacity-80">v1.0.2</span>
             </h1>
           </div>
           <button 
