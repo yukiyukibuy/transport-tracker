@@ -905,7 +905,10 @@ export default function App() {
         <div className="max-w-md mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Bus size={24} />
-            <h1 className="font-bold text-lg tracking-wide">KMB ETA Tracker</h1>
+            <h1 className="font-bold text-lg tracking-wide flex items-center gap-2">
+              KMB ETA Tracker
+              <span className="text-[10px] bg-red-700 px-1.5 py-0.5 rounded-md font-mono opacity-80">v1.0.1</span>
+            </h1>
           </div>
           <button 
             onClick={handleManualRefresh}
