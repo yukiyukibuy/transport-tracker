@@ -88,6 +88,7 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout 
 };
 
 let cachedStopsMap: Record<string, string> | null = null;
+let cachedStopsLocationMap: Record<string, {lat: string, long: string}> | null = null;
 let fetchStopsPromise: Promise<Record<string, string>> | null = null;
 
 const getGlobalStopsMap = async (): Promise<Record<string, string>> => {
@@ -101,12 +102,15 @@ const getGlobalStopsMap = async (): Promise<Record<string, string>> => {
     })
     .then(json => {
       const map: Record<string, string> = {};
+      const locMap: Record<string, {lat: string, long: string}> = {};
       if (json && json.data) {
         json.data.forEach((s: any) => {
           map[s.stop] = s.name_tc;
+          locMap[s.stop] = { lat: s.lat, long: s.long };
         });
       }
       cachedStopsMap = map;
+      cachedStopsLocationMap = locMap;
       return map;
     })
     .catch(err => {
@@ -127,6 +131,16 @@ const StopEtaRow: React.FC<{ route: string; stop: RouteStopConfig; lastRefresh: 
   const [etas, setEtas] = useState<EtaData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mapUrl, setMapUrl] = useState(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.stop_name + ' 巴士站')}`);
+
+  useEffect(() => {
+    getGlobalStopsMap().then(() => {
+      if (cachedStopsLocationMap && cachedStopsLocationMap[stop.stop_id]) {
+        const loc = cachedStopsLocationMap[stop.stop_id];
+        setMapUrl(`https://www.google.com/maps/search/?api=1&query=${loc.lat},${loc.long}`);
+      }
+    }).catch(() => {});
+  }, [stop.stop_id, stop.stop_name]);
 
   useEffect(() => {
     let isActive = true;
@@ -207,7 +221,7 @@ const StopEtaRow: React.FC<{ route: string; stop: RouteStopConfig; lastRefresh: 
     <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
       <div className="flex justify-between items-center mb-2 pb-2 border-b border-slate-200">
         <a 
-          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.stop_name + ' 巴士站')}`}
+          href={mapUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="font-medium text-slate-700 text-sm flex items-center gap-2 hover:text-red-600 transition-colors"
@@ -781,6 +795,9 @@ export default function App() {
   }, [routes]);
 
   useEffect(() => {
+    // Pre-fetch global stops map on mount
+    getGlobalStopsMap().catch(err => console.error('Failed to pre-fetch stops map', err));
+
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
