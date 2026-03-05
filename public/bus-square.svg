@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#87CEEB"/>
+      <stop offset="100%" style="stop-color:#E0F4FF"/>
+    </linearGradient>
+    <linearGradient id="busBodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6B00"/>
+      <stop offset="100%" style="stop-color:#CC4400"/>
+    </linearGradient>
+    <radialGradient id="hubGrad" cx="50%" cy="50%" r="50%" fx="35%" fy="35%">
+      <stop offset="0%" style="stop-color:#CCC"/>
+      <stop offset="100%" style="stop-color:#888"/>
+    </radialGradient>
+    <linearGradient id="windowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#B8E8FF;stop-opacity:0.9"/>
+      <stop offset="100%" style="stop-color:#6BBDE0;stop-opacity:0.7"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="2" dy="5" stdDeviation="5" flood-color="#00000033"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="400" fill="url(#skyGrad)"/>
+
+  <!-- Clouds -->
+  <ellipse cx="80" cy="60" rx="40" ry="18" fill="white" opacity="0.8"/>
+  <ellipse cx="110" cy="52" rx="30" ry="16" fill="white" opacity="0.8"/>
+  <ellipse cx="55" cy="55" rx="22" ry="14" fill="white" opacity="0.8"/>
+
+  <ellipse cx="300" cy="80" rx="45" ry="18" fill="white" opacity="0.7"/>
+  <ellipse cx="335" cy="72" rx="28" ry="14" fill="white" opacity="0.7"/>
+  <ellipse cx="270" cy="76" rx="22" ry="12" fill="white" opacity="0.7"/>
+
+  <!-- Road -->
+  <rect x="0" y="320" width="400" height="80" fill="#555"/>
+  <rect x="0" y="317" width="400" height="7" fill="#888"/>
+  <!-- Road dashes -->
+  <rect x="10"  y="348" width="50" height="6" fill="white" opacity="0.5" rx="2"/>
+  <rect x="90"  y="348" width="50" height="6" fill="white" opacity="0.5" rx="2"/>
+  <rect x="170" y="348" width="50" height="6" fill="white" opacity="0.5" rx="2"/>
+  <rect x="250" y="348" width="50" height="6" fill="white" opacity="0.5" rx="2"/>
+  <rect x="330" y="348" width="50" height="6" fill="white" opacity="0.5" rx="2"/>
+
+  <!-- Bus body -->
+  <rect x="25" y="150" width="350" height="175" rx="14" fill="url(#busBodyGrad)" filter="url(#shadow)"/>
+
+  <!-- Roof -->
+  <rect x="45" y="133" width="310" height="28" rx="10" fill="#E05A00"/>
+
+  <!-- Destination sign -->
+  <rect x="55" y="138" width="140" height="16" rx="4" fill="#111"/>
+  <text x="125" y="150" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" fill="#FFD700" font-weight="bold">尖沙咀 → 旺角</text>
+
+  <!-- Route number sign top right -->
+  <rect x="310" y="138" width="42" height="16" rx="4" fill="#111"/>
+  <text x="331" y="150" text-anchor="middle" font-family="Arial Black, sans-serif" font-size="10" fill="#FFD700" font-weight="bold">101</text>
+
+  <!-- Windows -->
+  <rect x="45"  y="168" width="58" height="52" rx="6" fill="url(#windowGrad)" stroke="#AA3300" stroke-width="2"/>
+  <rect x="117" y="168" width="58" height="52" rx="6" fill="url(#windowGrad)" stroke="#AA3300" stroke-width="2"/>
+  <rect x="189" y="168" width="58" height="52" rx="6" fill="url(#windowGrad)" stroke="#AA3300" stroke-width="2"/>
+  <rect x="261" y="168" width="42" height="52" rx="6" fill="url(#windowGrad)" stroke="#AA3300" stroke-width="2"/>
+
+  <!-- Window shine -->
+  <line x1="50"  y1="172" x2="62"  y2="182" stroke="white" stroke-width="2" opacity="0.5"/>
+  <line x1="122" y1="172" x2="134" y2="182" stroke="white" stroke-width="2" opacity="0.5"/>
+  <line x1="194" y1="172" x2="206" y2="182" stroke="white" stroke-width="2" opacity="0.5"/>
+  <line x1="266" y1="172" x2="276" y2="182" stroke="white" stroke-width="2" opacity="0.5"/>
+
+  <!-- Door -->
+  <rect x="317" y="196" width="50" height="129" rx="5" fill="#BB3D00" stroke="#993300" stroke-width="1.5"/>
+  <line x1="342" y1="198" x2="342" y2="323" stroke="#993300" stroke-width="2"/>
+  <rect x="326" y="252" width="7" height="18" rx="3" fill="#FFD700"/>
+  <rect x="349" y="252" width="7" height="18" rx="3" fill="#FFD700"/>
+
+  <!-- Front face -->
+  <rect x="25" y="178" width="20" height="70" rx="5" fill="#E05A00"/>
+  <!-- Headlight -->
+  <rect x="27" y="185" width="16" height="13" rx="3" fill="#FFFAAA" stroke="#CC8800" stroke-width="1"/>
+  <!-- Fog light -->
+  <rect x="27" y="208" width="16" height="10" rx="2" fill="#FFDDAA" stroke="#CC7700" stroke-width="1"/>
+
+  <!-- Side stripe -->
+  <rect x="25" y="237" width="350" height="8" rx="3" fill="#FF8C00" opacity="0.6"/>
+
+  <!-- Bumper -->
+  <rect x="22" y="298" width="356" height="14" rx="5" fill="#BB3D00"/>
+
+  <!-- Route on side -->
+  <text x="180" y="280" text-anchor="middle" font-family="Arial Black, sans-serif" font-size="20" fill="white" font-weight="900" opacity="0.8">101</text>
+
+  <!-- Wheels -->
+  <!-- Front wheel -->
+  <circle cx="100" cy="323" r="34" fill="#1a1a1a"/>
+  <circle cx="100" cy="323" r="28" fill="#2a2a2a"/>
+  <circle cx="100" cy="323" r="13" fill="url(#hubGrad)"/>
+  <circle cx="100" cy="323" r="5"  fill="#AAA"/>
+  <line x1="100" y1="295" x2="100" y2="351" stroke="#555" stroke-width="3"/>
+  <line x1="72"  y1="323" x2="128" y2="323" stroke="#555" stroke-width="3"/>
+  <line x1="80"  y1="303" x2="120" y2="343" stroke="#555" stroke-width="2.5"/>
+  <line x1="120" y1="303" x2="80"  y2="343" stroke="#555" stroke-width="2.5"/>
+
+  <!-- Rear wheel -->
+  <circle cx="295" cy="323" r="34" fill="#1a1a1a"/>
+  <circle cx="295" cy="323" r="28" fill="#2a2a2a"/>
+  <circle cx="295" cy="323" r="13" fill="url(#hubGrad)"/>
+  <circle cx="295" cy="323" r="5"  fill="#AAA"/>
+  <line x1="295" y1="295" x2="295" y2="351" stroke="#555" stroke-width="3"/>
+  <line x1="267" y1="323" x2="323" y2="323" stroke="#555" stroke-width="3"/>
+  <line x1="275" y1="303" x2="315" y2="343" stroke="#555" stroke-width="2.5"/>
+  <line x1="315" y1="303" x2="275" y2="343" stroke="#555" stroke-width="2.5"/>
+</svg>
